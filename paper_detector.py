@@ -5,7 +5,7 @@ import numpy as np
 def detect_paper(frame):
     hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
 
-    lower_white = np.array([0, 0, 150])
+    lower_white = np.array([0, 0, 120])
     upper_white = np.array([180, 80, 255])
 
     mask = cv2.inRange(hsv, lower_white, upper_white)
