@@ -3,99 +3,129 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Instrument Translation - Camera</title>
-
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            text-align: center;
-            margin: 0;
-            padding: 24px;
-            background: #f4f4f4;
-        }
-
-        h1 {
-            font-size: 1.5rem;
-        }
-
-        video {
-            width: 100%;
-            max-width: 600px;
-            border-radius: 12px;
-            background: #222;
-        }
-
-        button {
-            margin: 12px 6px;
-            padding: 12px 20px;
-            font-size: 16px;
-            cursor: pointer;
-        }
-
-        #status {
-            margin: 12px;
-            color: #444;
-        }
-    </style>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Instrument Translation Camera</title>
 </head>
-
 <body>
     <h1>Instrument Translation</h1>
-    <p>Phone Camera Preview</p>
 
-    <video id="camera" autoplay playsinline></video>
+    <video
+        id="video"
+        autoplay
+        playsinline
+        muted
+        style="width: 100%; max-width: 600px;"
+    ></video>
 
-    <div>
-        <button id="startButton">Start Camera</button>
-        <button id="stopButton">Stop Camera</button>
-    </div>
+    <p id="status">Camera stopped.</p>
 
-    <p id="status">Camera is stopped.</p>
+    <button id="start">Start Camera</button>
+    <button id="stop" disabled>Stop Camera</button>
 
     <script>
-        const video = document.getElementById("camera");
+        const SERVER_URL =
+            "https://moses-wed-legitimate-concrete.trycloudflare.com";
+
+        const video = document.getElementById("video");
         const status = document.getElementById("status");
+        const startButton = document.getElementById("start");
+        const stopButton = document.getElementById("stop");
+
+        const canvas = document.createElement("canvas");
+        const context = canvas.getContext("2d");
 
         let stream = null;
+        let timer = null;
+        let sending = false;
+        let running = false;
 
-        async function startCamera() {
+        async function sendFrame() {
+            if (
+                !running ||
+                sending ||
+                video.readyState < 2
+            ) {
+                return;
+            }
+
+            sending = true;
+
             try {
-                // Request the rear-facing camera
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+
+                context.drawImage(
+                    video, 0, 0,
+                    canvas.width, canvas.height
+                );
+
+                const blob = await new Promise(resolve =>
+                    canvas.toBlob(resolve, "image/jpeg", 0.7)
+                );
+
+                if (!blob || !running) return;
+
+                const response = await fetch(
+                    SERVER_URL + "/frame",
+                    {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/octet-stream"
+                        },
+                        body: blob
+                    }
+                );
+
+                if (!response.ok) {
+                    throw new Error("Server returned " + response.status);
+                }
+
+                status.textContent = "Camera running — frames sending.";
+            } catch (error) {
+                status.textContent = "Sending failed: " + error.message;
+                console.error(error);
+            } finally {
+                sending = false;
+            }
+        }
+
+        startButton.addEventListener("click", async () => {
+            try {
                 stream = await navigator.mediaDevices.getUserMedia({
-                    video: {
-                        facingMode: "environment"
-                    },
+                    video: { facingMode: "environment" },
                     audio: false
                 });
 
                 video.srcObject = stream;
                 await video.play();
 
-                status.textContent = "Camera is running!";
-            } catch (error) {
-                status.textContent =
-                    "Could not access camera: " + error.message;
+                running = true;
+                startButton.disabled = true;
+                stopButton.disabled = false;
+                status.textContent = "Camera started; connecting...";
 
+                timer = setInterval(sendFrame, 200);
+            } catch (error) {
+                status.textContent = "Camera error: " + error.message;
                 console.error(error);
             }
-        }
+        });
 
-        function stopCamera() {
+        stopButton.addEventListener("click", () => {
+            running = false;
+            clearInterval(timer);
+            timer = null;
+
             if (stream) {
                 stream.getTracks().forEach(track => track.stop());
                 stream = null;
             }
 
             video.srcObject = null;
-            status.textContent = "Camera is stopped.";
-        }
-
-        document.getElementById("startButton")
-            .addEventListener("click", startCamera);
-
-        document.getElementById("stopButton")
-            .addEventListener("click", stopCamera);
+            startButton.disabled = false;
+            stopButton.disabled = true;
+            status.textContent = "Camera stopped.";
+        });
     </script>
 </body>
 </html>
