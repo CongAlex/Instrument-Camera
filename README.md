@@ -18,12 +18,26 @@ git clone <repository-url>
 cd Instrument-Translation
 ```
 
+Make sure Python 3.12 is selected as the project interpreter. In VS Code, use
+**Python: Select Interpreter** and choose the Python 3.12 interpreter (or the
+project's `.venv` after creating it). In PowerShell, use `py -3.12` to create
+the environment with Python 3.12 even if the `python` command points to a
+different installation.
+
 Create and activate a virtual environment:
 
 ```powershell
-python -m venv .venv
+py -3.12 -m venv .venv
 .\.venv\Scripts\Activate.ps1
 ```
+
+After activation, confirm the project environment is being used:
+
+```powershell
+python -c "import sys; print(sys.executable)"
+```
+
+The printed path should point to `.venv\Scripts\python.exe`.
 
 Install Python dependencies:
 
