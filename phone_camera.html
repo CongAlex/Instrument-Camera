@@ -1,0 +1,101 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Instrument Translation - Camera</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 0;
+            padding: 24px;
+            background: #f4f4f4;
+        }
+
+        h1 {
+            font-size: 1.5rem;
+        }
+
+        video {
+            width: 100%;
+            max-width: 600px;
+            border-radius: 12px;
+            background: #222;
+        }
+
+        button {
+            margin: 12px 6px;
+            padding: 12px 20px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        #status {
+            margin: 12px;
+            color: #444;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Instrument Translation</h1>
+    <p>Phone Camera Preview</p>
+
+    <video id="camera" autoplay playsinline></video>
+
+    <div>
+        <button id="startButton">Start Camera</button>
+        <button id="stopButton">Stop Camera</button>
+    </div>
+
+    <p id="status">Camera is stopped.</p>
+
+    <script>
+        const video = document.getElementById("camera");
+        const status = document.getElementById("status");
+
+        let stream = null;
+
+        async function startCamera() {
+            try {
+                // Request the rear-facing camera
+                stream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        facingMode: "environment"
+                    },
+                    audio: false
+                });
+
+                video.srcObject = stream;
+                await video.play();
+
+                status.textContent = "Camera is running!";
+            } catch (error) {
+                status.textContent =
+                    "Could not access camera: " + error.message;
+
+                console.error(error);
+            }
+        }
+
+        function stopCamera() {
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+                stream = null;
+            }
+
+            video.srcObject = null;
+            status.textContent = "Camera is stopped.";
+        }
+
+        document.getElementById("startButton")
+            .addEventListener("click", startCamera);
+
+        document.getElementById("stopButton")
+            .addEventListener("click", stopCamera);
+    </script>
+</body>
+</html>
